@@ -20,7 +20,7 @@ public class ChatController {
 	 */
 	@MessageMapping(value = "/message" /* 宛先名 */)
 	@SendTo(value = "/topic/messages") // 処理結果の送り先
-	ChatForm greet(ChatForm chatForm) {
+	ChatForm receiveMessage(ChatForm chatForm) {
 		log.info("received date:{}, name:{}, message:{}", chatForm.getDate(), chatForm.getName(), chatForm.getMessage());
 		return chatForm;
 	}

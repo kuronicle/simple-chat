@@ -83,6 +83,7 @@ ChatStomp.prototype.sendMessage = function() {
 	// 入力メッセージをクリアして、フォーカスを入力メッセージに戻す。
 	document.getElementById('message').value = '';
 	document.getElementById('message').focus();
+	this.setSendableStatus();
 };
 
 /**
