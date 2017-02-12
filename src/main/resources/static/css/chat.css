@@ -1,0 +1,42 @@
+@CHARSET "UTF-8";
+
+body {
+	background-color: black;
+	color: #e0e0e0;
+	font-size: small;
+}
+
+#contents {
+	margin-bottom: 100px; /* #naviのheightと同じ値とすること*/
+	padding-left: 0px;
+	padding-right: 0px;
+}
+
+#messages {
+	padding-left: 5px;
+	padding-right: 5px;
+}
+
+#navi {
+	height: 100px; /* #contentsのmargin-bottomと同じ値とすること*/
+	padding: 10px 0px;
+}
+
+#navi>div {
+	padding: 0px;
+}
+
+#user-list {
+	height: 80px;
+	overflow-y: scroll;
+	padding: 0px 5px;
+}
+
+#messages dl {
+	margin-bottom: 2px;
+}
+
+#messages dt {
+    font-weight: normal;
+    color: #00dd00;
+}
