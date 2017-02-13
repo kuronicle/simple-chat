@@ -1,6 +1,3 @@
-const
-EMPTY_NAME = 'ななし';
-
 /**
  * 初期化処理
  */
@@ -26,7 +23,12 @@ var ChatStomp = function() {
 ChatStomp.prototype.connect = function() {
 	var socket = new WebSocket(this.endpoint); // エンドポイントのURL
 	this.stompClient = Stomp.over(socket); // WebSocketを使ったStompクライアントを作成
-	this.stompClient.connect({}, this.onConnected.bind(this)); // エンドポイントに接続し、接続した際のコールバックを登録
+	var name = document.getElementById('name').value;
+	var headers = {
+		      login: name,
+		      passcode: null,
+		    };
+	this.stompClient.connect(headers, this.onConnected.bind(this)); // エンドポイントに接続し、接続した際のコールバックを登録
 };
 
 /**
@@ -71,8 +73,6 @@ ChatStomp.prototype.onSubscribeMessage = function(message) {
  */
 ChatStomp.prototype.sendMessage = function() {
 	var name = document.getElementById('name').value;
-	if (!name)
-		name = EMPTY_NAME;
 	var today = new Date();
 	var json_message = {
 		date : today.toLocaleString(),
@@ -125,7 +125,7 @@ ChatStomp.prototype.canSubmit = function(enabled) {
 /**
  * 「Enter」キー押下で送信する
  */
-shortcut.add("Enter",function(){
+shortcut.add("Enter", function() {
 	document.getElementById('send').click();
 });
 
