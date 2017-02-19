@@ -1,175 +1,125 @@
 package net.kuronicle.chat.listener;
 
-import java.security.Principal;
+import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.MessageHeaders;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.stereotype.Component;
-import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import lombok.extern.slf4j.Slf4j;
+import net.kuronicle.chat.context.ConnectedUserManager;
 import net.kuronicle.chat.form.ChatForm;
 
 @Component
 @Slf4j
 public class WebSocketEventListener {
 
+	private static final String MESSAGE_FORMAT_CONNECT = ">> [%s] in.";
+
+	private static final String MESSAGE_FORMAT_DISCONNECT = "<< [%s] out.";
+
 	private SimpMessagingTemplate template;
 
-	/**
-	 * 接続ユーザ一覧
-	 */
-	private Map<String, String> sessionUserMap = new HashMap<String, String>();
+	private ConnectedUserManager userManager;
 
 	@Autowired
-	public WebSocketEventListener(SimpMessagingTemplate template) {
+	public WebSocketEventListener(SimpMessagingTemplate template, ConnectedUserManager userManager) {
 		this.template = template;
+		this.userManager = userManager;
 	}
 
 	@EventListener
 	public void handleSessionConnectedEvent(SessionConnectedEvent event) {
 
-		Message<byte[]> message = event.getMessage();
-		if (message != null) {
-			MessageHeaders headers = message.getHeaders();
-			if (headers != null) {
-				log.debug("MessageHeaders:{}", headers.toString());
-			}
-
-			byte[] payload = message.getPayload();
-			if (payload != null) {
-				log.debug("Message:{}", new String(payload));
-			}
-		}
-
-		Principal user = event.getUser();
-		if (user != null) {
-			log.debug("User name:{}", user.getName());
-		}
-
 		// 接続ユーザを接続ユーザ一覧に追加する。
 		String login = getLogin(event);
 		String sessionId = getSimpSessionId(event);
 		if (sessionId != null) {
-			sessionUserMap.put(sessionId, login);
+			userManager.putUser(sessionId, login);
 		}
-
-		long timestamp = event.getTimestamp();
-		log.debug("Event time:{}", new Date(timestamp).toString());
+		log.debug("sessionId={}, login={}", sessionId, login);
 
 		ChatForm chatForm = new ChatForm();
-		chatForm.setName("SYSTEM");
-		chatForm.setDate(new Date(timestamp).toString());
-		chatForm.setMessage(login + " in this room.");
-		log.info(login + " in this room.");
+		chatForm.setName(ChatForm.NAME_SYSTEM);
+		chatForm.setDate(new SimpleDateFormat(ChatForm.DATE_FORMAT).format(new Date(event.getTimestamp())));
+		chatForm.setMessage(String.format(MESSAGE_FORMAT_CONNECT, login));
+		chatForm.setUserList(userManager.getUserList());
+		log.info(chatForm.toString());
+
+		// 入室通知を送信する。
 		this.template.convertAndSend("/topic/messages", chatForm);
 	}
 
 	private String getSimpSessionId(SessionConnectedEvent event) {
 		Message<byte[]> message = event.getMessage();
-
 		if (message == null) {
 			return null;
 		}
 
-		MessageHeaders messageHeaders = message.getHeaders();
-		if (messageHeaders == null) {
+		SimpMessageHeaderAccessor simpMessageHeaderAccessor = SimpMessageHeaderAccessor.getAccessor(message,
+				SimpMessageHeaderAccessor.class);
+		if (simpMessageHeaderAccessor == null) {
 			return null;
 		}
 
-		String sessionId = (String) messageHeaders.get("simpSessionId");
+		String sessionId = (String) simpMessageHeaderAccessor.getHeader(SimpMessageHeaderAccessor.SESSION_ID_HEADER);
 
 		return sessionId;
 	}
 
-	@SuppressWarnings("unchecked")
 	private String getLogin(SessionConnectedEvent event) {
 		Message<byte[]> message = event.getMessage();
-
 		if (message == null) {
 			return null;
 		}
 
-		MessageHeaders messageHeaders = message.getHeaders();
-		if (messageHeaders == null) {
+		SimpMessageHeaderAccessor simpMessageHeaderAccessor = SimpMessageHeaderAccessor.getAccessor(message,
+				SimpMessageHeaderAccessor.class);
+		if (simpMessageHeaderAccessor == null) {
 			return null;
 		}
 
-		GenericMessage<?> genericMessage = messageHeaders.get("simpConnectMessage", GenericMessage.class);
+		GenericMessage<?> genericMessage = (GenericMessage<?>) simpMessageHeaderAccessor
+				.getHeader(SimpMessageHeaderAccessor.CONNECT_MESSAGE_HEADER);
 		if (genericMessage == null) {
 			return null;
 		}
 
-		MessageHeaders genericMessageHeaders = genericMessage.getHeaders();
-		if (genericMessageHeaders == null) {
+		StompHeaderAccessor stompHeaderAccessor = StompHeaderAccessor.getAccessor(genericMessage,
+				StompHeaderAccessor.class);
+		if (stompHeaderAccessor == null) {
 			return null;
 		}
 
-		Map<String, Object> nativeHeaders = (Map<String, Object>) genericMessageHeaders.get("nativeHeaders");
-		if (nativeHeaders == null) {
-			return null;
-		}
-
-		List<String> loginList = (List<String>) nativeHeaders.get("login");
-		String login = null;
-		if (loginList != null && !loginList.isEmpty()) {
-			login = loginList.get(0);
-		}
+		String login = stompHeaderAccessor.getFirstNativeHeader(StompHeaderAccessor.STOMP_LOGIN_HEADER);
 
 		return login;
 	}
 
 	@EventListener
 	public void handleSessionDisconnectEvent(SessionDisconnectEvent event) {
-		CloseStatus closeStatus = event.getCloseStatus();
-		if (closeStatus != null) {
-			log.debug("CloseStatus: code={}, reason={}", closeStatus.getCode(), closeStatus.getReason());
-		}
 
-		Message<byte[]> message = event.getMessage();
-		if (message != null) {
-			MessageHeaders headers = message.getHeaders();
-			if (headers != null) {
-				log.debug("MessageHeaders:{}", headers.toString());
-			}
-
-			byte[] payload = message.getPayload();
-			if (payload != null) {
-				log.debug("Message:{}", new String(payload));
-			}
-		}
-
-		Principal user = event.getUser();
-		if (user != null) {
-			log.debug("User name:{}", user.getName());
-		}
-
-		// セッションIDを取得する。
+		// 接続ユーザを接続ユーザ一覧から削除する。
 		String sessionId = event.getSessionId();
-		log.debug("SessionId:{}", sessionId);
-		String login = null;
-		if (sessionId != null) {
-			login = sessionUserMap.remove(sessionId);
-		}
-
-		long timestamp = event.getTimestamp();
-		log.debug("Event time:{}", new Date(timestamp).toString());
+		String login = (sessionId == null) ? null : userManager.removeUser(sessionId);
+		log.debug("sessionId={}, login={}", sessionId, login);
 
 		ChatForm chatForm = new ChatForm();
-		chatForm.setName("SYSTEM");
-		chatForm.setDate(new Date(timestamp).toString());
-		chatForm.setMessage(login + " out this room.");
-		log.info(login + " out this room.");
+		chatForm.setName(ChatForm.NAME_SYSTEM);
+		chatForm.setDate(new SimpleDateFormat(ChatForm.DATE_FORMAT).format(new Date(event.getTimestamp())));
+		chatForm.setMessage(String.format(MESSAGE_FORMAT_DISCONNECT, login));
+		chatForm.setUserList(userManager.getUserList());
+		log.info(chatForm.toString());
+
+		// 退室通知を送信する。
 		this.template.convertAndSend("/topic/messages", chatForm);
 	}
 }
