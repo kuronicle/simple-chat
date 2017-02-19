@@ -3,6 +3,11 @@ A simple chat service by Spring Boot. You can use it with only Java and web brow
 
 ![screen image](https://raw.githubusercontent.com/kuronicle/simple-chat/master/readme-image/screen-image.png "screen image")
 
+## Features
+
+* No need to install. Server needs only Java. 
+* Client tool is web browser.
+
 ## Requirement
 
 ### to compile
@@ -24,9 +29,9 @@ A simple chat service by Spring Boot. You can use it with only Java and web brow
 
 ### execute server side jar file
 
-1. `java -jar target/simple-chat-0.0.1-SNAPSHOT.jar
+1. `java -jar target/simple-chat-0.0.1-SNAPSHOT.jar`
 
-If you want to change the port of server (default 8080), please add `-Dserver.port=<port number>` (ex `java -jar -Dserver.port ...`). 
+If you want to change the port of server (default 8080), please add `-Dserver.port=<port number>` (ex `java -jar -Dserver.port 18080 target/simple-chat-0.0.1-SNAPSHOT.jar`). 
 
 ### access from web browser
 
